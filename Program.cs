@@ -20,6 +20,7 @@ using VRageMath;
 
 /* TODO:
  *   - pause drilling if drills are full
+ *   - activate ejectors if too much stone
  *   - PID to adjust orientation with wheels height
  *   - PID for main rotor orientation
  *   - drill with state machine
@@ -27,6 +28,32 @@ using VRageMath;
  *   - avoid area bounding box
  *   - drill size to compute the automine schema
  */
+
+/* CUSTOM DATA EXAMPLE 
+[drill]
+minDepth=0
+maxDepth=30
+drillsGroupName=Rover Miner - Drills
+pistonDrillingSpeed=0.1
+pistonRetractSpeed=5
+pistonMovingSpeed=10
+minHorizontalDistance=25
+rotorDrillShaftName=Rover Miner - Drill Advanced Rotor
+mainRotorName=Rover Miner - Main Advanced Rotor
+forwardPistonsGroupName=Rover Miner - forward pistons
+reversePistonsGroupName=Rover Miner - reverse pistons
+downPistonsGroupName=Rover Miner - down pistons
+upPistonsGroupName=Rover Miner - up pistons
+
+[deploy]
+hingesTopGroupName=Rover Miner - Hinges Top
+hingesBottomGroupName=Rover Miner - Hinges Bottom
+basculeRotorName=Rover Miner - Bascule Advanced Rotor
+
+[cargo]
+ejectorsGroupName=Rover Miner - ejectors
+stoneSortersGroupName=Rover Miner - Converyor Sorters
+*/
 
 
 namespace IngameScript
@@ -65,10 +92,10 @@ namespace IngameScript
         private IMyBlockGroup drillsGroup;
         private List<IMyShipDrill> drillBlocks;
 
-        string rotorDrillShaftName = "Rover Miner - Drill Advanced Rotor";
+        string rotorDrillShaftName = "Drill Advanced Rotor";
         private IMyMotorAdvancedStator rotorDrillShaft;
 
-        string mainRotorName = "Rover Miner - Main Advanced Rotor";
+        string mainRotorName = "Main Advanced Rotor";
         private IMyMotorAdvancedStator mainRotor;
 
 
@@ -93,11 +120,26 @@ namespace IngameScript
         private List<IMyPistonBase> upPistonBlocks;
 
 
+        // deployable drill shaft
+        string hingesTopGroupName ="Hinges Top";
+        private IMyBlockGroup hingesTopGroup;
+        private List<IMyMotorAdvancedStator> hingesTopBlocks;
+        string hingesBottomGroupName = "Hinges Bottom";
+        private IMyBlockGroup hingesBottomGroup;
+        private List<IMyMotorAdvancedStator> hingesBottomBlocks;
+        string basculeRotorName = "Bascule Advanced Rotor";
+        private IMyMotorAdvancedStator basculeRotor;
+
+        // ejection system
+        string ejectorsGroupName = "ejectors";
+        private IMyBlockGroup ejectorsGroup;
+        private List<IMyShipConnector> ejectorsBlocks;
+        string stoneSortersGroupName = "sorters";
+        private IMyBlockGroup stoneSortersGroup;
+        private List<IMyConveyorSorter> stoneSortersBlocks;
+
         private List<bool> connectorsStatus;
-
         private Dictionary<string, Color> colors = new Dictionary<string, Color>();
-
-
 
         private Status status;
 
@@ -148,6 +190,12 @@ namespace IngameScript
             // drill shaft main rotor (the rotor at the base that determines the orientation)
             mainRotor = GridTerminalSystem.GetBlockWithName(mainRotorName) as IMyMotorAdvancedStator;
             
+            // drill shaft "basscule" rotor (the rotor at the top that rotates the whole rig from horizontal to vertical)
+            basculeRotor = GridTerminalSystem.GetBlockWithName(basculeRotorName) as IMyMotorAdvancedStator;
+            // hinges to deploy the rig
+            AllocateRessources(ref hingesTopBlocks, hingesTopGroupName, hingesTopGroup);
+            AllocateRessources(ref hingesBottomBlocks, hingesBottomGroupName, hingesBottomGroup);
+
             if (! String.IsNullOrEmpty(Storage))
             {
                 status = new Status(Storage);
@@ -209,16 +257,75 @@ namespace IngameScript
             {
                 minHorizontalDistance = _ini.Get("drill", "minHorizontalDistance").ToSingle();
             }
-
             
+            if (!String.IsNullOrEmpty(_ini.Get("drill", "rotorDrillShaftName").ToString()))
+            {
+                rotorDrillShaftName = _ini.Get("drill", "rotorDrillShaftName").ToString();
+            }
+            if (!String.IsNullOrEmpty(_ini.Get("drill", "mainRotorName").ToString()))
+            {
+                mainRotorName = _ini.Get("drill", "mainRotorName").ToString();
+            }
+            if (!String.IsNullOrEmpty(_ini.Get("drill", "forwardPistonsGroupName").ToString()))
+            {
+                forwardPistonsGroupName = _ini.Get("drill", "forwardPistonsGroupName").ToString();
+            }
+            if (!String.IsNullOrEmpty(_ini.Get("drill", "reversePistonsGroupName").ToString()))
+            {
+                reversePistonsGroupName = _ini.Get("drill", "reversePistonsGroupName").ToString();
+            }
+            if (!String.IsNullOrEmpty(_ini.Get("drill", "downPistonsGroupName").ToString()))
+            {
+                downPistonsGroupName = _ini.Get("drill", "downPistonsGroupName").ToString();
+            }
+            if (!String.IsNullOrEmpty(_ini.Get("drill", "upPistonsGroupName").ToString()))
+            {
+                upPistonsGroupName = _ini.Get("drill", "upPistonsGroupName").ToString();
+            }
 
-            Echo($"minDepth = {minDepth.ToString()}");
-            Echo($"maxDepth = {maxDepth.ToString()}");
-            Echo($"drillsGroupName = {drillsGroupName.ToString()}");
-            Echo($"pistonRetractSpeed = {pistonRetractSpeed.ToString()}");
-            Echo($"pistonMovingSpeed = {pistonMovingSpeed.ToString()}");
-            Echo($"pistonDrillingSpeed = {pistonDrillingSpeed.ToString()}");
-            Echo($"minHorizontalDistance = {minHorizontalDistance.ToString()}");
+            // drill shaft deploy stuff
+            if (!String.IsNullOrEmpty(_ini.Get("deploy", "hingesTopGroupName").ToString()))
+            {
+                hingesTopGroupName = _ini.Get("deploy", "hingesTopGroupName").ToString();
+            }
+            if (!String.IsNullOrEmpty(_ini.Get("deploy", "hingesBottomGroupName").ToString()))
+            {
+                hingesBottomGroupName = _ini.Get("deploy", "hingesBottomGroupName").ToString();
+            }
+            if (!String.IsNullOrEmpty(_ini.Get("deploy", "basculeRotorName").ToString()))
+            {
+                basculeRotorName = _ini.Get("deploy", "basculeRotorName").ToString();
+            }
+
+            // cargo and stone ejections management
+            if (!String.IsNullOrEmpty(_ini.Get("cargo", "ejectorsGroupName").ToString()))
+            {
+                ejectorsGroupName = _ini.Get("cargo", "ejectorsGroupName").ToString();
+            }
+            if (!String.IsNullOrEmpty(_ini.Get("cargo", "stoneSortersGroupName").ToString()))
+            {
+                stoneSortersGroupName = _ini.Get("cargo", "stoneSortersGroupName").ToString();
+            }
+
+            Echo("Current configuration:");
+            Echo($"  minDepth = {minDepth.ToString()}");
+            Echo($"  maxDepth = {maxDepth.ToString()}");
+            Echo($"  drillsGroupName = {drillsGroupName.ToString()}");
+            Echo($"  pistonRetractSpeed = {pistonRetractSpeed.ToString()}");
+            Echo($"  pistonMovingSpeed = {pistonMovingSpeed.ToString()}");
+            Echo($"  pistonDrillingSpeed = {pistonDrillingSpeed.ToString()}");
+            Echo($"  minHorizontalDistance = {minHorizontalDistance.ToString()}");
+            Echo($"  rotorDrillShaftName = {rotorDrillShaftName.ToString()}");
+            Echo($"  mainRotorName = {mainRotorName.ToString()}");
+            Echo($"  forwardPistonsGroupName = {forwardPistonsGroupName.ToString()}");
+            Echo($"  reversePistonsGroupName = {reversePistonsGroupName.ToString()}");
+            Echo($"  downPistonsGroupName = {downPistonsGroupName.ToString()}");
+            Echo($"  upPistonsGroupName = {upPistonsGroupName.ToString()}");
+            Echo($"  hingesTopGroupName = {hingesTopGroupName.ToString()}");
+            Echo($"  hingesBottomGroupName = {hingesBottomGroupName.ToString()}");
+            Echo($"  basculeRotorName = {basculeRotorName.ToString()}");
+            Echo($"  ejectorsGroupName = {ejectorsGroupName.ToString()}");
+            Echo($"  stoneSortersGroupName = {stoneSortersGroupName.ToString()}");
         }
 
         public void AllocateRessources<T>(ref List<T> blocs, String groupName, IMyBlockGroup group ) where T: class
