@@ -29,6 +29,10 @@ using VRageMath;
  *   - drill size to compute the automine schema
  */
 
+/* useful ressources:
+ *   - https://github.com/paniha/Space_Engineers_Scripting -> mainly for the inventory demos codes
+ */
+
 /* CUSTOM DATA EXAMPLE 
 [drill]
 minDepth=0
@@ -54,6 +58,8 @@ basculeRotorName=Rover Miner - Bascule Advanced Rotor
 ejectorsGroupName=Rover Miner - ejectors
 stoneSortersGroupName=Rover Miner - Converyor Sorters
 */
+
+
 
 
 namespace IngameScript
@@ -98,6 +104,8 @@ namespace IngameScript
         string mainRotorName = "Main Advanced Rotor";
         private IMyMotorAdvancedStator mainRotor;
 
+        string drillDistanceCameraName = "drill Camera";
+        IMyCameraBlock drillDistanceCamera;
 
         private DateTime timeChecker;
         private DateTime CurrentTime;
@@ -196,6 +204,10 @@ namespace IngameScript
             AllocateRessources(ref hingesTopBlocks, hingesTopGroupName, hingesTopGroup);
             AllocateRessources(ref hingesBottomBlocks, hingesBottomGroupName, hingesBottomGroup);
 
+            // drill shaft rotor (the tip of the bore machine)
+            drillDistanceCamera = GridTerminalSystem.GetBlockWithName(drillDistanceCameraName) as IMyCameraBlock;
+
+
             if (! String.IsNullOrEmpty(Storage))
             {
                 status = new Status(Storage);
@@ -222,129 +234,6 @@ namespace IngameScript
 
         }
 
-        public void ParseIniFile()
-        {
-            MyIniParseResult result;
-            if (!_ini.TryParse(Me.CustomData, out result))
-                throw new Exception(result.ToString());
-
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "minDepth").ToString()))
-            {
-                minDepth = _ini.Get("drill", "minDepth").ToSingle();
-            }
-
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "maxDepth").ToString()))
-            {
-                maxDepth = _ini.Get("drill", "maxDepth").ToSingle();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "drillsGroupName").ToString()))
-            {
-                drillsGroupName = _ini.Get("drill", "drillsGroupName").ToString();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "pistonRetractSpeed").ToString()))
-            {
-                pistonRetractSpeed = _ini.Get("drill", "pistonRetractSpeed").ToSingle();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "pistonMovingSpeed").ToString()))
-            {
-                pistonMovingSpeed = _ini.Get("drill", "pistonMovingSpeed").ToSingle();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "pistonDrillingSpeed").ToString()))
-            {
-                pistonDrillingSpeed = _ini.Get("drill", "pistonDrillingSpeed").ToSingle();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "minHorizontalDistance").ToString()))
-            {
-                minHorizontalDistance = _ini.Get("drill", "minHorizontalDistance").ToSingle();
-            }
-            
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "rotorDrillShaftName").ToString()))
-            {
-                rotorDrillShaftName = _ini.Get("drill", "rotorDrillShaftName").ToString();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "mainRotorName").ToString()))
-            {
-                mainRotorName = _ini.Get("drill", "mainRotorName").ToString();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "forwardPistonsGroupName").ToString()))
-            {
-                forwardPistonsGroupName = _ini.Get("drill", "forwardPistonsGroupName").ToString();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "reversePistonsGroupName").ToString()))
-            {
-                reversePistonsGroupName = _ini.Get("drill", "reversePistonsGroupName").ToString();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "downPistonsGroupName").ToString()))
-            {
-                downPistonsGroupName = _ini.Get("drill", "downPistonsGroupName").ToString();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("drill", "upPistonsGroupName").ToString()))
-            {
-                upPistonsGroupName = _ini.Get("drill", "upPistonsGroupName").ToString();
-            }
-
-            // drill shaft deploy stuff
-            if (!String.IsNullOrEmpty(_ini.Get("deploy", "hingesTopGroupName").ToString()))
-            {
-                hingesTopGroupName = _ini.Get("deploy", "hingesTopGroupName").ToString();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("deploy", "hingesBottomGroupName").ToString()))
-            {
-                hingesBottomGroupName = _ini.Get("deploy", "hingesBottomGroupName").ToString();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("deploy", "basculeRotorName").ToString()))
-            {
-                basculeRotorName = _ini.Get("deploy", "basculeRotorName").ToString();
-            }
-
-            // cargo and stone ejections management
-            if (!String.IsNullOrEmpty(_ini.Get("cargo", "ejectorsGroupName").ToString()))
-            {
-                ejectorsGroupName = _ini.Get("cargo", "ejectorsGroupName").ToString();
-            }
-            if (!String.IsNullOrEmpty(_ini.Get("cargo", "stoneSortersGroupName").ToString()))
-            {
-                stoneSortersGroupName = _ini.Get("cargo", "stoneSortersGroupName").ToString();
-            }
-
-            Echo("Current configuration:");
-            Echo($"  minDepth = {minDepth.ToString()}");
-            Echo($"  maxDepth = {maxDepth.ToString()}");
-            Echo($"  drillsGroupName = {drillsGroupName.ToString()}");
-            Echo($"  pistonRetractSpeed = {pistonRetractSpeed.ToString()}");
-            Echo($"  pistonMovingSpeed = {pistonMovingSpeed.ToString()}");
-            Echo($"  pistonDrillingSpeed = {pistonDrillingSpeed.ToString()}");
-            Echo($"  minHorizontalDistance = {minHorizontalDistance.ToString()}");
-            Echo($"  rotorDrillShaftName = {rotorDrillShaftName.ToString()}");
-            Echo($"  mainRotorName = {mainRotorName.ToString()}");
-            Echo($"  forwardPistonsGroupName = {forwardPistonsGroupName.ToString()}");
-            Echo($"  reversePistonsGroupName = {reversePistonsGroupName.ToString()}");
-            Echo($"  downPistonsGroupName = {downPistonsGroupName.ToString()}");
-            Echo($"  upPistonsGroupName = {upPistonsGroupName.ToString()}");
-            Echo($"  hingesTopGroupName = {hingesTopGroupName.ToString()}");
-            Echo($"  hingesBottomGroupName = {hingesBottomGroupName.ToString()}");
-            Echo($"  basculeRotorName = {basculeRotorName.ToString()}");
-            Echo($"  ejectorsGroupName = {ejectorsGroupName.ToString()}");
-            Echo($"  stoneSortersGroupName = {stoneSortersGroupName.ToString()}");
-        }
-
-        public void AllocateRessources<T>(ref List<T> blocs, String groupName, IMyBlockGroup group ) where T: class
-        {
-            blocs = new List<T>();
-            try
-            {
-                group = GridTerminalSystem.GetBlockGroupWithName(groupName);
-                group.GetBlocksOfType<T>(blocs);
-            }
-            catch (Exception e)
-            {
-                Echo($"not found: {groupName}");
-            }
-        }
-        public void Save()
-        {
-            Storage = status.Save();
-        }
 
         public void Main(string argument, UpdateType updateType)
         {
@@ -392,25 +281,7 @@ namespace IngameScript
             }
 
         }
-
-
-        public void Rename()
-        {
-            string myNewPrefix = _commandLine.Argument(1);
-            string myRegex = "^" + myNewPrefix + " - *";
-            Echo("Renaming blocs");
-            foreach (IMyTerminalBlock bloc in allBlocks)
-            {
-                if (!System.Text.RegularExpressions.Regex.IsMatch(bloc.CustomName, myRegex))
-                {
-                    string newName = myNewPrefix + " - " + bloc.CustomName;
-                    Echo($"- {bloc.CustomName} -> {newName}");
-                    bloc.CustomName = newName;
-                }
-            }
-            return;
-        }
-
+        
         public void Drill()
         {
             string argument = _commandLine.Argument(1);
@@ -464,6 +335,7 @@ namespace IngameScript
             status.MainRotorAngle = 0;
             SetExtendingStatus(false, false);
             status.AbortRequested = true;
+            drillDistanceCamera.EnableRaycast = false;
         }
 
         public void Park()
@@ -474,6 +346,7 @@ namespace IngameScript
             SetExtendingStatus(false, false);
             status.AbortRequested = true;
             ResetVerticalPistons();
+            drillDistanceCamera.EnableRaycast = false;
         }
 
         public void Automine()
@@ -505,49 +378,7 @@ namespace IngameScript
             status.IsRetracting = isRetracting;
         }
 
-        public bool PistonStopped()
-        {
-            return (PistonsExtended() || PistonRetracted());
-        }
-        public bool PistonsExtended()
-        {
-            bool[] tmpStatus = new bool[forwardPistonBlocks.Count];
-            int c = 0;
-            foreach (IMyPistonBase bloc in forwardPistonBlocks)
-            {
-                if (bloc.CurrentPosition >= bloc.MaxLimit + 0.1 ||
-                    bloc.CurrentPosition >= bloc.MaxLimit - 0.1)
-                {
-                    tmpStatus[c] = true;
-                }
-                else
-                {
-                    tmpStatus[c] = false;
-                }
-                c++;
-            }
-            return !tmpStatus.Contains(false);
-        }
-
-        public bool PistonRetracted()
-        {
-            bool[] tmpStatus = new bool[forwardPistonBlocks.Count];
-            int c = 0;
-            foreach (IMyPistonBase bloc in forwardPistonBlocks)
-            {
-                if (bloc.CurrentPosition <= bloc.MinLimit + 0.1 ||
-                    bloc.CurrentPosition <= bloc.MinLimit - 0.1)
-                {
-                    tmpStatus[c] = true;
-                }
-                else
-                {
-                    tmpStatus[c] = false;
-                }
-                c++;
-            }
-            return !tmpStatus.Contains(false);
-        }
+        
 
         public void UpdateAutomine()
         {
@@ -572,182 +403,6 @@ namespace IngameScript
             }
         }
 
-        public void UpdateVerticalPistons()
-        {
-            if (status.IsDrilling && IsAtStablePosition())
-            {
-                ExtendVerticalPistons();
-            } else
-            {
-                RetractVerticalPistons();
-            }
-        }
-
-        public void SetupVerticalPistons()
-        {
-            foreach (IMyPistonBase bloc in downPistonBlocks)
-            {
-                bloc.MinLimit = Convert.ToSingle(minDepth / totalVerticalPistons);
-                bloc.MaxLimit = Convert.ToSingle(maxDepth / totalVerticalPistons);
-            }
-            foreach (IMyPistonBase bloc in upPistonBlocks)
-            {
-                bloc.MinLimit = Convert.ToSingle(10 - (maxDepth / totalVerticalPistons));
-                bloc.MaxLimit = Convert.ToSingle(10 - (minDepth / totalVerticalPistons));
-            }
-        }
-
-        public void ResetVerticalPistons()
-        {
-            foreach (IMyPistonBase bloc in downPistonBlocks)
-            {
-                bloc.MinLimit = 0.0f;
-                bloc.MaxLimit = 10.0f;
-            }
-            foreach (IMyPistonBase bloc in upPistonBlocks)
-            {
-                bloc.MinLimit = 0.0f;
-                bloc.MaxLimit = 10.0f;
-            }
-        }
-
-        public void ExtendVerticalPistons()
-        {
-            foreach (IMyPistonBase bloc in downPistonBlocks)
-            {
-                bloc.Velocity = pistonDrillingSpeed / totalVerticalPistons;
-            }
-            foreach (IMyPistonBase bloc in upPistonBlocks)
-            {
-                bloc.Velocity = -pistonDrillingSpeed / totalVerticalPistons;
-            }
-            return;
-        }
-
-        public void RetractVerticalPistons()
-        {
-            foreach (IMyPistonBase bloc in downPistonBlocks)
-            {
-                bloc.Velocity = -pistonRetractSpeed / totalVerticalPistons;
-            }
-            foreach (IMyPistonBase bloc in upPistonBlocks)
-            {
-                bloc.Velocity = pistonRetractSpeed / totalVerticalPistons;
-            }
-            return;
-        }
-        public void UpdatePistons()
-        {
-            if (status.AbortRequested)
-            {
-                RetractPistons();
-            }
-            else if (status.IsExtending)
-            {
-                ExtendPistons();
-            }
-            else if (status.IsRetracting)
-            {
-                RetractPistons();
-            }
-            else
-            {
-                StopPistons();
-            }
-
-        }
-
-        public float GetCurrentPistonDistance()
-        {
-            float currentDistance = 0.0f;
-            foreach (IMyPistonBase bloc in forwardPistonBlocks)
-            {
-                currentDistance += bloc.CurrentPosition;
-            }
-            foreach (IMyPistonBase bloc in reversePistonBlocks)
-            {
-                currentDistance += 10 - bloc.CurrentPosition;
-            }
-            return currentDistance;
-        }
-        public void ExtendPistons()
-        {
-            float sign = (status.HorizontalDistance >= GetCurrentPistonDistance()) ? 1.0f : -1.0f;
-            foreach (IMyPistonBase bloc in forwardPistonBlocks)
-            {
-                bloc.MaxLimit = Convert.ToSingle(status.HorizontalDistance / totalHorizontalPistons);
-                bloc.MinLimit = bloc.MaxLimit;
-                bloc.Velocity = sign * pistonMovingSpeed / totalHorizontalPistons;
-            }
-            foreach (IMyPistonBase bloc in reversePistonBlocks)
-            {
-                bloc.MinLimit = 10 - Convert.ToSingle(status.HorizontalDistance / totalHorizontalPistons);
-                bloc.MaxLimit = bloc.MinLimit;
-                bloc.Velocity = sign * -1.0f * pistonMovingSpeed / totalHorizontalPistons;
-            }
-            return;
-        }
-
-        public void RetractPistons()
-        {
-            foreach (IMyPistonBase bloc in forwardPistonBlocks)
-            {
-                bloc.MinLimit = minPistonDistance;
-                bloc.Velocity = -pistonRetractSpeed / totalHorizontalPistons;
-            }
-            foreach (IMyPistonBase bloc in reversePistonBlocks)
-            {
-                bloc.MinLimit = maxPistonDistance;
-                bloc.Velocity = pistonRetractSpeed / totalHorizontalPistons;
-            }
-            return;
-        }
-
-        public void StopPistons()
-        {
-            foreach (IMyPistonBase bloc in forwardPistonBlocks)
-            {
-                bloc.Velocity = 0;
-            }
-            foreach (IMyPistonBase bloc in reversePistonBlocks)
-            {
-                bloc.Velocity = 0;
-            }
-            return;
-        }
-
-        public void OnOff<T>(T bloc, bool isOn) where T : IMyFunctionalBlock
-        {
-            if (isOn)
-            {
-                bloc.ApplyAction("OnOff_On");
-                bloc.Enabled = true;
-            }
-            else
-            {
-                bloc.ApplyAction("OnOff_Off");
-                bloc.Enabled = false;
-            }
-            return;
-        }
-
-        public void OnOff<T>(List<T> blocs, bool isOn) where T : IMyFunctionalBlock
-        {
-            foreach (T bloc in blocs)
-            {
-                if (isOn)
-                {
-                    bloc.ApplyAction("OnOff_On");
-                    bloc.Enabled = true;
-                }
-                else
-                {
-                    bloc.ApplyAction("OnOff_Off");
-                    bloc.Enabled = false;
-                }
-            }
-            return;
-        }
 
         public void Goto(double x, double y)
         {
@@ -763,26 +418,6 @@ namespace IngameScript
             }
         }
 
-
-        //var console = GridTerminalSystem.GetBlockWithName("Wide LCD Panel") as IMyTextPanel; 
-        //if (console != null) 
-        //console.WriteText(someWords); 
-        public void UpdateRotor(IMyMotorAdvancedStator rotor, float velocity, float targetAngle, float tolerance = 0.035f)
-        {
-            float deltaAngle = (float)Math.Atan2(Math.Sin(targetAngle - rotor.Angle), Math.Cos(targetAngle - rotor.Angle));
-            if (Math.Abs(deltaAngle) <= tolerance)
-            {
-                rotor.SetValue("Velocity", 0f);
-            } 
-            else if (deltaAngle < 0)
-            {
-                rotor.SetValue("Velocity", -velocity);
-            }
-            else if (deltaAngle > 0)
-            {
-                rotor.SetValue("Velocity", velocity);
-            }
-        }
         public void UpdateScreen()
         {
             string extra = Environment.NewLine;
@@ -799,10 +434,6 @@ namespace IngameScript
             surface.WriteText($"PistonStopped = {PistonStopped()}" + extra, true);
         }
 
-        public void UpdateMainRotor()
-        {
-            UpdateRotor(mainRotor, mainRotorSpeed, status.MainRotorAngle, 0.01f);
-        }
         public void UpdateDrill()
         {
             //if (status.IsDrilling && (status.HorizontalDistance >= (drillBlocks.Count * 2.5) / 2) && IsAtStablePosition())
@@ -824,24 +455,6 @@ namespace IngameScript
                 UpdateRotor(rotorDrillShaft, rotorShaftStoppingSpeed, 0f, 0.035f);
             }
         }
-
-        public bool IsAtStablePosition()
-        {
-            return (Math.Abs(mainRotor.GetValue<float>("Velocity")) <= 0.01 && PistonStopped());
-        }
-        public void SetRotorVelocity(List<IMyTerminalBlock> rotors, float speed, bool isReversed)
-        {
-            if (isReversed)
-            {
-                speed = -speed;
-            }
-            foreach (IMyTerminalBlock rotor in rotors)
-            {
-                rotor.SetValue("Velocity", speed);
-            }
-            return;
-        }
-
 
     }
 }
