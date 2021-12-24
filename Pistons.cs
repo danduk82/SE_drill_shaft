@@ -25,6 +25,8 @@ namespace IngameScript
         {
             return (PistonsExtended() || PistonRetracted());
         }
+
+
         public bool PistonsExtended()
         {
             bool[] tmpStatus = new bool[forwardPistonBlocks.Count];
@@ -108,26 +110,41 @@ namespace IngameScript
 
         public void ExtendVerticalPistons()
         {
+            double distanceToBottom = ComputeRaycastDistance(drillDistanceCamera);
+            double requiredExtensionDelta = 0;
+            if (distanceToBottom > 0)
+            {
+                requiredExtensionDelta = distanceToBottom - 3.5;
+            }
+            else
+            {
+                requiredExtensionDelta = 32;
+            }
+            Echo($"requiredExtensionDelta = {requiredExtensionDelta}");
+            float velocity = (float)_pidVerticalPistons.Control(requiredExtensionDelta) / totalVerticalPistons ;
+            Echo($"velocity = {velocity}");
             foreach (IMyPistonBase bloc in downPistonBlocks)
             {
-                bloc.Velocity = pistonDrillingSpeed / totalVerticalPistons;
+                bloc.Velocity = velocity ;
             }
             foreach (IMyPistonBase bloc in upPistonBlocks)
             {
-                bloc.Velocity = -pistonDrillingSpeed / totalVerticalPistons;
+                bloc.Velocity = -velocity;
             }
             return;
         }
 
         public void RetractVerticalPistons()
         {
+            double requiredExtensionDelta = GetCurrentPistonDistance(downPistonBlocks, upPistonBlocks); // basically, when retracting the error is the distance
+            float velocity = (float)_pidRetractVerticalPistons.Control(requiredExtensionDelta);
             foreach (IMyPistonBase bloc in downPistonBlocks)
             {
-                bloc.Velocity = -pistonRetractSpeed / totalVerticalPistons;
+                bloc.Velocity = -velocity / totalVerticalPistons;
             }
             foreach (IMyPistonBase bloc in upPistonBlocks)
             {
-                bloc.Velocity = pistonRetractSpeed / totalVerticalPistons;
+                bloc.Velocity = velocity / totalVerticalPistons;
             }
             return;
         }
@@ -165,35 +182,53 @@ namespace IngameScript
             }
             return currentDistance;
         }
+
+        public float GetCurrentPistonDistance(List<IMyPistonBase> forwardPistons, List<IMyPistonBase> backwardPistons)
+        {
+            float currentDistance = 0.0f;
+            foreach (IMyPistonBase bloc in forwardPistons)
+            {
+                currentDistance += bloc.CurrentPosition;
+            }
+            foreach (IMyPistonBase bloc in backwardPistons)
+            {
+                currentDistance += 10 - bloc.CurrentPosition;
+            }
+            return currentDistance;
+        }
         public void ExtendPistons()
         {
-            float sign = (status.HorizontalDistance >= GetCurrentPistonDistance()) ? 1.0f : -1.0f;
+            double distanceError = status.HorizontalDistance - GetCurrentPistonDistance();
+            float velocity = (float)_pidHirzontalPistons.Control(distanceError);
+
             foreach (IMyPistonBase bloc in forwardPistonBlocks)
             {
                 bloc.MaxLimit = Convert.ToSingle(status.HorizontalDistance / totalHorizontalPistons);
                 bloc.MinLimit = bloc.MaxLimit;
-                bloc.Velocity = sign * pistonMovingSpeed / totalHorizontalPistons;
+                bloc.Velocity = velocity / totalHorizontalPistons;
             }
             foreach (IMyPistonBase bloc in reversePistonBlocks)
             {
                 bloc.MinLimit = 10 - Convert.ToSingle(status.HorizontalDistance / totalHorizontalPistons);
                 bloc.MaxLimit = bloc.MinLimit;
-                bloc.Velocity = sign * -1.0f * pistonMovingSpeed / totalHorizontalPistons;
+                bloc.Velocity = -velocity / totalHorizontalPistons;
             }
             return;
         }
 
         public void RetractPistons()
         {
+            double distanceError = GetCurrentPistonDistance();
+            float velocity = (float)_pidHirzontalPistons.Control(distanceError);
             foreach (IMyPistonBase bloc in forwardPistonBlocks)
             {
                 bloc.MinLimit = minPistonDistance;
-                bloc.Velocity = -pistonRetractSpeed / totalHorizontalPistons;
+                bloc.Velocity = -velocity / totalHorizontalPistons;
             }
             foreach (IMyPistonBase bloc in reversePistonBlocks)
             {
                 bloc.MinLimit = maxPistonDistance;
-                bloc.Velocity = pistonRetractSpeed / totalHorizontalPistons;
+                bloc.Velocity = velocity / totalHorizontalPistons;
             }
             return;
         }

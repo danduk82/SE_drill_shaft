@@ -29,9 +29,14 @@ namespace IngameScript
         {
             UpdateRotor(mainRotor, mainRotorSpeed, status.MainRotorAngle, 0.01f);
         }
-        public void UpdateRotor(IMyMotorAdvancedStator rotor, float velocity, float targetAngle, float tolerance = 0.035f)
+        public void UpdateRotor(IMyMotorAdvancedStator rotor, float maxVelocity, float targetAngle, float tolerance = 0.035f)
         {
-            float deltaAngle = (float)Math.Atan2(Math.Sin(targetAngle - rotor.Angle), Math.Cos(targetAngle - rotor.Angle));
+
+            double deltaAngle = Math.Atan2(Math.Sin(targetAngle - rotor.Angle), Math.Cos(targetAngle - rotor.Angle));
+            //float velocity = Math.Abs((float)_pidMainRotor.Control(deltaAngle)) > maxVelocity ? maxVelocity : (float)Math.Abs(_pidMainRotor.Control(deltaAngle));
+            float velocity = (float)Math.Abs(_pidMainRotor.Control(deltaAngle));
+            Echo($"deltaAngle = {deltaAngle}");
+            Echo($"velocity = {velocity}");
             if (Math.Abs(deltaAngle) <= tolerance)
             {
                 rotor.SetValue("Velocity", 0f);

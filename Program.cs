@@ -19,10 +19,10 @@ using VRage.Game.ObjectBuilders.Definitions;
 using VRageMath;
 
 /* TODO:
+ *   - backport power management script here
  *   - pause drilling if drills are full
  *   - activate ejectors if too much stone
  *   - PID to adjust orientation with wheels height
- *   - PID for main rotor orientation
  *   - drill with state machine
  *   - automine based on schema
  *   - avoid area bounding box
@@ -151,6 +151,13 @@ namespace IngameScript
 
         private Status status;
 
+        const double TimeStep = 1.0 / 6.0; //  Update10 is 1/6th a second, change accordingly otherwise
+
+        PID _pidMainRotor; // PID controller for main rotor orientation
+        PID _pidVerticalPistons; // PID controller for vertical drills pistons when extending
+        PID _pidRetractVerticalPistons; // PID controller for vertical drills pistons when retracting
+        PID _pidHirzontalPistons; // PID controller for horizontal drills pistons
+
         //IMyShipDrill : IMyFunctionalBlock, IMyTerminalBlock, IMyCubeBlock, IMyEntity
 
         MyCommandLine _commandLine = new MyCommandLine();
@@ -227,6 +234,12 @@ namespace IngameScript
             //IMyShipController.MoveIndicator
             timeChecker = DateTime.Now;
             CurrentTime = DateTime.Now;
+
+            _pidMainRotor = new PID(2, 0, 0, TimeStep);
+            _pidVerticalPistons = new PID(0.2, 0, 0, TimeStep);
+            _pidRetractVerticalPistons = new PID(1, 0.1, 0, TimeStep);
+            _pidHirzontalPistons = new PID(1, 0, 0, TimeStep);
+
 
             Echo("Compilation successful");
             Echo($"Total of vertical pistons: {totalVerticalPistons}");

@@ -40,6 +40,7 @@ namespace IngameScript
                 // distance = the length of the world coordinates of object - word coordinates of the camera
                 distance = (hitInfo.HitPosition.Value - camera.GetPosition()).Length();
             }
+            Echo($"raycast distance: {distance}");
             return distance;
         }
         public void Rename()
